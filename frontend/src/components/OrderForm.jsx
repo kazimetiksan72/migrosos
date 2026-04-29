@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import './OrderForm.css'
 
 const HIZMET_OPTIONS = ['YAZILIM KAYNAK BEDELİ', 'YEMEK YANSITMA BEDELİ']
+const TR_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+  'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık']
 
 const fmt = (n) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)
 const parseTL = (v) => parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0
@@ -24,9 +26,10 @@ const emptyForm = {
   odenecekTutar: 0,
 }
 
-export default function OrderForm({ onSubmit, editingData, editingIndex, onCancelEdit }) {
+export default function OrderForm({ onSubmit, editingData, editingIndex, onCancelEdit, workdays, selectedMonth }) {
   const [form, setForm] = useState(emptyForm)
   const [birimFiyatDisplay, setBirimFiyatDisplay] = useState('')
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     if (editingData) {
@@ -97,20 +100,51 @@ export default function OrderForm({ onSubmit, editingData, editingIndex, onCance
     setBirimFiyatDisplay(n ? String(n).replace('.', ',') : '')
   }
 
+  const doSubmit = () => {
+    onSubmit({ ...form })
+    setForm(emptyForm)
+    setBirimFiyatDisplay('')
+    setShowModal(false)
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.firmaAdi || !form.ilgiliYonetici || !form.hizmetAciklamasi || !form.miktar || !form.birimFiyat) {
       alert('Lütfen zorunlu alanları doldurun.')
       return
     }
-    onSubmit({ ...form })
-    setForm(emptyForm)
-    setBirimFiyatDisplay('')
+    if (
+      form.hizmetAciklamasi === 'YEMEK YANSITMA BEDELİ' &&
+      workdays !== undefined &&
+      parseInt(form.miktar) !== workdays
+    ) {
+      setShowModal(true)
+      return
+    }
+    doSubmit()
   }
 
   const pct = (v) => `%${Math.round(v * 100)}`
 
   return (
+    <>
+    {showModal && (
+      <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal-icon">⚠️</div>
+          <h3 className="modal-title">Miktar Uyarısı</h3>
+          <p className="modal-body">
+            <strong>{selectedMonth ? `${TR_MONTHS[selectedMonth.getMonth()]} ${selectedMonth.getFullYear()}` : 'Seçili ay'}</strong> için
+            iş günü sayısı <strong>{workdays}</strong> iken siz <strong>{form.miktar}</strong> girdiniz.
+          </p>
+          <p className="modal-sub">Yine de devam etmek istiyor musunuz?</p>
+          <div className="modal-actions">
+            <button className="btn-modal-cancel" onClick={() => setShowModal(false)}>Düzelt</button>
+            <button className="btn-modal-confirm" onClick={doSubmit}>Yine de Ekle</button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="form-card">
       <div className="form-card-header">
         <h2 className="form-title">
@@ -259,5 +293,6 @@ export default function OrderForm({ onSubmit, editingData, editingIndex, onCance
         </div>
       </form>
     </div>
+    </>
   )
 }

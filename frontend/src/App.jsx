@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import OrderForm from './components/OrderForm'
 import OrderTable from './components/OrderTable'
 import Calendar from './components/Calendar'
@@ -13,6 +13,19 @@ export default function App() {
   })
   const [holidays, setHolidays] = useState([])
   const [editingIndex, setEditingIndex] = useState(null)
+
+  const workdays = useMemo(() => {
+    const year = selectedMonth.getFullYear()
+    const month = selectedMonth.getMonth()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    let count = 0
+    for (let d = 1; d <= daysInMonth; d++) {
+      const str = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      const dow = new Date(year, month, d).getDay()
+      if (dow !== 0 && dow !== 6 && !holidays.includes(str)) count++
+    }
+    return count
+  }, [selectedMonth, holidays])
 
   useEffect(() => {
     fetch('/api/holidays')
@@ -79,6 +92,8 @@ export default function App() {
             editingData={editingIndex !== null ? rows[editingIndex] : null}
             editingIndex={editingIndex}
             onCancelEdit={() => setEditingIndex(null)}
+            workdays={workdays}
+            selectedMonth={selectedMonth}
           />
           <OrderTable
             rows={rows}
